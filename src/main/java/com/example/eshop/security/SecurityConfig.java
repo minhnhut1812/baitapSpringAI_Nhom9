@@ -1,0 +1,90 @@
+package com.example.eshop.security;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+import lombok.RequiredArgsConstructor;
+
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity // bật @PreAuthorize
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+	private final JwtService jwtService;
+	private final CustomUserDetailsService userDetailsService;
+
+	@Bean
+	public PasswordEncoder passwordEncoder() {
+		return new BCryptPasswordEncoder();
+	}
+
+	/**
+	 * Spring Boot tự ráp DaoAuthenticationProvider từ UserDetailsService +
+	 * PasswordEncoder.
+	 */
+	@Bean
+	public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+		return config.getAuthenticationManager();
+	}
+
+	private JwtAuthenticationFilter jwtFilter() {
+		return new JwtAuthenticationFilter(jwtService, userDetailsService);
+	}
+
+	// ================= CHAIN 1: REST API (/api/**) =================
+	@Bean
+	@Order(1)
+	public SecurityFilterChain apiFilterChain(HttpSecurity http) throws Exception {
+		http.securityMatcher("/api/**").csrf(AbstractHttpConfigurer::disable) // API dùng header Bearer, không dùng
+																				// cookie
+				.sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+				.anonymous(a -> a.authorities("ROLE_GUEST"))
+				.authorizeHttpRequests(auth -> auth.requestMatchers("/api/auth/**").permitAll()
+						.requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
+						.requestMatchers("/api/orders/**").hasRole("CUSTOMER").anyRequest().hasRole("SELLER"))
+				.exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))) // 401
+				.addFilterBefore(jwtFilter(), UsernamePasswordAuthenticationFilter.class);
+		return http.build();
+	}
+
+	// ================= CHAIN 2: WEB (Thymeleaf) =================
+	@Bean
+	@Order(2)
+	public SecurityFilterChain webFilterChain(HttpSecurity http) throws Exception {
+		http.sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+				.anonymous(a -> a.authorities("ROLE_GUEST"))
+				.authorizeHttpRequests(auth -> auth
+						.requestMatchers("/css/**", "/js/**", "/images/**", "/favicon.ico", "/error", "/403")
+						.permitAll().requestMatchers("/", "/products", "/products/**", "/login").permitAll()
+						.requestMatchers("/register").hasRole("GUEST").requestMatchers("/admin/**").hasRole("SELLER")
+						// Khai báo rõ cả đường dẫn gốc và đường dẫn con
+						.requestMatchers("/cart", "/cart/**", "/checkout", "/checkout/**", "/orders", "/orders/**")
+						.hasRole("CUSTOMER").anyRequest().authenticated())
+				.exceptionHandling(e -> e.authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/login"))
+						.accessDeniedPage("/403"))
+				.logout(logout -> logout.logoutUrl("/logout") // ĐỔI LẠI THÀNH /logout
+						.deleteCookies(JwtService.COOKIE_NAME, "JSESSIONID").invalidateHttpSession(true)
+						.clearAuthentication(true).logoutSuccessUrl("/login?logout").permitAll())
+				// BẮT BUỘC PHẢI CÓ DÒNG NÀY ĐỂ ĐỌC COOKIE JWT TRÊN WEB
+				.addFilterBefore(jwtFilter(), UsernamePasswordAuthenticationFilter.class);
+
+		return http.build();
+	}
+}
