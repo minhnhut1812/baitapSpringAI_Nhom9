@@ -6,6 +6,9 @@ import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.document.Document;
+import org.springframework.ai.vectorstore.SearchRequest;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +31,7 @@ public class ProductVectorStore {
 
     private final ProductRepository productRepository;
     private final EmbeddingService embeddingService;
+    private final VectorStore vectorStore;
 
     private final List<VectorDocument> indexedDocuments = new ArrayList<>();
     private final NumberFormat currencyFormatter = NumberFormat.getInstance(new Locale("vi", "VN"));
@@ -89,6 +93,7 @@ public class ProductVectorStore {
         try {
             List<Product> products = productRepository.findAllWithCategory();
             indexedDocuments.clear();
+            List<Document> springDocs = new ArrayList<>();
 
             for (Product p : products) {
                 String catName = p.getCategory() != null ? p.getCategory().getName() : "Khác";
@@ -121,21 +126,75 @@ public class ProductVectorStore {
                         embedding,
                         specs
                 ));
+
+                Map<String, Object> metadata = new HashMap<>();
+                metadata.put("productId", p.getId());
+                metadata.put("name", p.getName());
+                metadata.put("category", catName);
+                metadata.put("price", p.getPrice() != null ? p.getPrice().doubleValue() : 0.0);
+                metadata.put("quantity", p.getQuantity());
+                metadata.put("link", "/products/" + p.getId());
+
+                springDocs.add(Document.builder()
+                        .id(String.valueOf(p.getId()))
+                        .text(contentText)
+                        .metadata(metadata)
+                        .build());
+            }
+
+            if (!springDocs.isEmpty()) {
+                try {
+                    vectorStore.add(springDocs);
+                    log.info("Spring AI VectorStore đã nạp thành công {} Document sản phẩm", springDocs.size());
+                } catch (Exception ex) {
+                    log.warn("Spring AI VectorStore nạp cảnh báo: {}", ex.getMessage());
+                }
             }
             log.info("Vector Database đã lập chỉ mục {} sản phẩm", indexedDocuments.size());
         } catch (Exception e) {
-            log.error("Lỗi khi lập chỉ mục Vector Database: {}", e.getMessage());
+            log.error("Lỗi khi lập chỉ mục Vector Database: {}", e.getMessage(), e);
         }
     }
 
     /**
-     * Tìm kiếm ngữ nghĩa tương đồng (Semantic Vector Search) bằng Cosine Similarity
+     * Tìm kiếm ngữ nghĩa tương đồng (Semantic Vector Search) qua Spring AI VectorStore
      */
     public List<VectorDocument> similaritySearch(String query, int topK) {
         if (indexedDocuments.isEmpty() || query == null || query.isBlank()) {
             return Collections.emptyList();
         }
 
+        // 1. Ưu tiên truy xuất qua Spring AI VectorStore chính thức
+        try {
+            List<Document> matchedDocs = vectorStore.similaritySearch(
+                    SearchRequest.builder()
+                            .query(query)
+                            .topK(topK)
+                            .build()
+            );
+
+            if (matchedDocs != null && !matchedDocs.isEmpty()) {
+                Map<Long, VectorDocument> docMap = indexedDocuments.stream()
+                        .collect(Collectors.toMap(VectorDocument::id, d -> d, (a, b) -> a));
+                List<VectorDocument> results = new ArrayList<>();
+                for (Document doc : matchedDocs) {
+                    try {
+                        Long id = Long.valueOf(doc.getId());
+                        VectorDocument vd = docMap.get(id);
+                        if (vd != null && !results.contains(vd)) {
+                            results.add(vd);
+                        }
+                    } catch (Exception ignored) {}
+                }
+                if (!results.isEmpty()) {
+                    return results;
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Spring AI similaritySearch lỗi, chuyển sang fallback cosine search: {}", e.getMessage());
+        }
+
+        // 2. Fallback: tính cosine similarity từ EmbeddingService nội bộ
         float[] queryEmbedding = embeddingService.embed(query);
 
         return indexedDocuments.stream()

@@ -4,6 +4,9 @@ import com.example.eshop.service.SalesAnalyticsService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.document.Document;
+import org.springframework.ai.vectorstore.SearchRequest;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Component;
 
 import java.text.NumberFormat;
@@ -24,6 +27,7 @@ public class SalesAnalyticsVectorStore {
     private static final Logger log = LoggerFactory.getLogger(SalesAnalyticsVectorStore.class);
 
     private final EmbeddingService embeddingService;
+    private final VectorStore vectorStore;
     private final NumberFormat currencyFormatter = NumberFormat.getInstance(new Locale("vi", "VN"));
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
@@ -122,6 +126,29 @@ public class SalesAnalyticsVectorStore {
         summarySb.append(String.format("Tổng số mặt hàng trong danh mục sản phẩm của cửa hàng là: %d sản phẩm.", stats.productCount()));
         addDocument("TONG_QUAN_DOANH_THU", summarySb.toString());
 
+        // Đồng bộ các phân đoạn thống kê vào Spring AI VectorStore
+        List<Document> springDocs = new ArrayList<>();
+        for (AnalyticsDocument doc : indexedDocuments) {
+            Map<String, Object> meta = new HashMap<>();
+            meta.put("topic", doc.topic());
+            meta.put("source", "sales_analytics");
+
+            springDocs.add(Document.builder()
+                    .id("analytics_" + doc.topic())
+                    .text(doc.content())
+                    .metadata(meta)
+                    .build());
+        }
+
+        if (!springDocs.isEmpty()) {
+            try {
+                vectorStore.add(springDocs);
+                log.info("Spring AI VectorStore đã nạp {} Document thống kê bán hàng", springDocs.size());
+            } catch (Exception ex) {
+                log.warn("Spring AI VectorStore nạp tài liệu thống kê cảnh báo: {}", ex.getMessage());
+            }
+        }
+
         log.info("SalesAnalyticsVectorStore đã lập chỉ mục {} tài liệu vector thống kê", indexedDocuments.size());
     }
 
@@ -131,13 +158,35 @@ public class SalesAnalyticsVectorStore {
     }
 
     /**
-     * Tìm kiếm ngữ nghĩa tương đồng (Semantic Search) qua Cosine Similarity trong Vector Database
+     * Tìm kiếm ngữ nghĩa tương đồng (Semantic Search) qua Spring AI VectorStore
      */
     public List<String> search(String question, int topK) {
         if (indexedDocuments.isEmpty() || question == null || question.isBlank()) {
             return Collections.emptyList();
         }
 
+        Set<String> resultContents = new LinkedHashSet<>();
+
+        // 1. Thử truy xuất ngữ nghĩa qua Spring AI VectorStore chính thức
+        try {
+            List<Document> matched = vectorStore.similaritySearch(
+                    SearchRequest.builder()
+                            .query(question)
+                            .topK(topK)
+                            .build()
+            );
+            if (matched != null && !matched.isEmpty()) {
+                for (Document d : matched) {
+                    if ("sales_analytics".equals(d.getMetadata().get("source"))) {
+                        resultContents.add(d.getText());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Spring AI similaritySearch phân tích thống kê lỗi: {}", e.getMessage());
+        }
+
+        // 2. Fallback: tính cosine similarity từ EmbeddingService nội bộ
         float[] queryEmbedding = embeddingService.embed(question);
 
         List<AnalyticsDocument> topDocs = indexedDocuments.stream()
@@ -148,7 +197,6 @@ public class SalesAnalyticsVectorStore {
                 .collect(Collectors.toList());
 
         String qLower = question.toLowerCase();
-        Set<String> resultContents = new LinkedHashSet<>();
 
         if (qLower.contains("đơn") || qLower.contains("tiền") || qLower.contains("giá trị") || qLower.contains("cao nhất") || qLower.contains("thấp nhất")) {
             indexedDocuments.stream().filter(d -> "DON_HANG_CAO_THAP_NHAT".equals(d.topic())).map(AnalyticsDocument::content).forEach(resultContents::add);
