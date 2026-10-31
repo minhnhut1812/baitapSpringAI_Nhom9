@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{fragments/layout :: head('Cửa hàng')}"></head>
 <body>
 <nav th:replace="~{fragments/layout :: navbar}"></nav>
@@ -36,10 +36,16 @@ th:alt="${p.name}">
 <h6 class="card-title" th:text="${p.name}"></h6>
 <div class="price mb-2" th:text="${#numbers.formatDecimal(p.price, 0,
 'POINT', 0, 'COMMA')} + ' ₫'"></div>
- <div class="mt-auto">
- <!-- Nút "Thêm vào giỏ" sẽ bổ sung ở Phần 2 -->
+ <div class="mt-auto d-flex justify-content-between align-items-center">
  <a class="btn btn-sm btn-outline-primary"
 th:href="@{/products/{id}(id=${p.id})}">Chi tiết</a>
+ <form th:action="@{/cart/add}" method="post" class="d-inline" sec:authorize="!hasRole('SELLER')">
+     <input type="hidden" name="productId" th:value="${p.id}">
+     <input type="hidden" name="quantity" value="1">
+     <button type="submit" class="btn btn-sm btn-primary" th:disabled="${p.quantity <= 0}" title="Thêm vào giỏ hàng">
+         🛒 Bỏ giỏ
+     </button>
+ </form>
  </div>
  </div>
  </div>

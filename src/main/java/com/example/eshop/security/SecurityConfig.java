@@ -19,6 +19,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 @Configuration
 @EnableWebSecurity
@@ -52,7 +53,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/chat").permitAll()
+                .requestMatchers("/api/chat", "/api/chat/**").permitAll()
                 .requestMatchers("/api/orders/**").hasRole("CUSTOMER")
                 .anyRequest().hasRole("SELLER"))
             .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
@@ -65,11 +66,12 @@ public class SecurityConfig {
     @Order(2)
     public SecurityFilterChain webFilterChain(HttpSecurity http) throws Exception {
         http
-            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .csrf(csrf -> csrf.ignoringRequestMatchers("/logout", "/api/**"))
+            .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             .anonymous(a -> a.authorities("ROLE_GUEST"))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/favicon.ico", "/error", "/403").permitAll()
-                .requestMatchers("/", "/products", "/products/**", "/login").permitAll()
+                .requestMatchers("/", "/products", "/products/**", "/login", "/logout").permitAll()
                 .requestMatchers("/register").hasRole("GUEST")
                 .requestMatchers("/cart/**", "/checkout/**", "/orders/**").hasRole("CUSTOMER")
                 .requestMatchers("/admin/**").hasRole("SELLER")
@@ -79,9 +81,12 @@ public class SecurityConfig {
                 .accessDeniedPage("/403"))
             .logout(l -> l
                 .logoutUrl("/logout")
+                .logoutRequestMatcher(new AntPathRequestMatcher("/logout"))
                 .deleteCookies(JwtService.COOKIE_NAME, "JSESSIONID")
                 .invalidateHttpSession(true)
-                .logoutSuccessUrl("/?logout"))
+                .clearAuthentication(true)
+                .logoutSuccessUrl("/login?logout")
+                .permitAll())
             .addFilterBefore(jwtFilter(), UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
