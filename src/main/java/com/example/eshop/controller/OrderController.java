@@ -24,19 +24,19 @@ public class OrderController {
     }
 
     @GetMapping("/{id}")
-    public String detail(@PathVariable Long id, Principal principal, Model model) {
+    public String detail(@PathVariable("id") Long id, Principal principal, Model model) {
         model.addAttribute("order", getOwnedOrder(id, principal));
         return "order/detail";
     }
 
     @GetMapping("/{id}/payment")
-    public String payment(@PathVariable Long id, Principal principal, Model model) {
+    public String payment(@PathVariable("id") Long id, Principal principal, Model model) {
         model.addAttribute("order", getOwnedOrder(id, principal));
         return "order/payment";
     }
 
     @PostMapping("/{id}/pay")
-    public String pay(@PathVariable Long id, Principal principal, RedirectAttributes ra) {
+    public String pay(@PathVariable("id") Long id, Principal principal, RedirectAttributes ra) {
         getOwnedOrder(id, principal);
         orderService.markPaid(id);
         ra.addFlashAttribute("message", "Thanh toán thành công đơn #" + id);

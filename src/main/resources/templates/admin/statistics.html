@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Thống kê AI')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: navbar}"></nav>
+<main class="container mb-5">
+    <div th:replace="~{fragments/layout :: alerts}"></div>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+        <div>
+            <h2 class="mb-1">📊 Thống kê bán hàng bằng AI (Vector Database)</h2>
+            <p class="text-muted mb-0">Hệ thống phân tích các chỉ số đơn hàng, sản phẩm và doanh số qua cơ sở dữ liệu Vector để AI giải đáp chính xác.</p>
+        </div>
+        <a class="btn btn-outline-primary" th:href="@{/admin/statistics}">🔄 Làm mới số liệu</a>
+    </div>
+
+    <!-- Tổng quan đơn hàng & doanh thu -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-lg-3">
+            <div class="card h-100 shadow-sm border-0 bg-light">
+                <div class="card-body">
+                    <div class="text-muted small">Đơn hàng hợp lệ</div>
+                    <div class="fs-3 fw-bold text-dark" th:text="${statistics.orderCount}">0</div>
+                    <div class="small text-muted">Không tính đơn đã hủy</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card h-100 shadow-sm border-0 bg-light">
+                <div class="card-body">
+                    <div class="text-muted small">Tổng doanh thu toàn sàn</div>
+                    <div class="fs-4 fw-bold text-success">
+                        <span th:text="${#numbers.formatDecimal(statistics.totalRevenue, 0, 'POINT', 0, 'COMMA')}">0</span> VNĐ
+                    </div>
+                    <div class="small text-muted" th:text="|${statistics.totalUnitsSold} sản phẩm đã bán|">0 sản phẩm đã bán</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card h-100 shadow-sm border-0 bg-light">
+                <div class="card-body">
+                    <div class="text-muted small">💰 Đơn nhiều tiền nhất</div>
+                    <div th:if="${statistics.highestValueOrder != null}">
+                        <div class="fw-bold text-primary" th:text="|Đơn #${statistics.highestValueOrder.id}|">Đơn #0</div>
+                        <div class="fw-semibold text-danger"><span th:text="${#numbers.formatDecimal(statistics.highestValueOrder.totalAmount, 0, 'POINT', 0, 'COMMA')}">0</span> VNĐ</div>
+                        <div class="small text-muted" th:text="${#temporals.format(statistics.highestValueOrder.orderDate, 'dd/MM/yyyy')}">--</div>
+                    </div>
+                    <div th:if="${statistics.highestValueOrder == null}" class="text-muted">Chưa có đơn hàng</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card h-100 shadow-sm border-0 bg-light">
+                <div class="card-body">
+                    <div class="text-muted small">🏷️ Đơn ít tiền nhất</div>
+                    <div th:if="${statistics.lowestValueOrder != null}">
+                        <div class="fw-bold text-primary" th:text="|Đơn #${statistics.lowestValueOrder.id}|">Đơn #0</div>
+                        <div class="fw-semibold text-secondary"><span th:text="${#numbers.formatDecimal(statistics.lowestValueOrder.totalAmount, 0, 'POINT', 0, 'COMMA')}">0</span> VNĐ</div>
+                        <div class="small text-muted" th:text="${#temporals.format(statistics.lowestValueOrder.orderDate, 'dd/MM/yyyy')}">--</div>
+                    </div>
+                    <div th:if="${statistics.lowestValueOrder == null}" class="text-muted">Chưa có đơn hàng</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chi tiết Sản phẩm & Ngày bán -->
+    <div class="row g-3 mb-4">
+        <div class="col-lg-6">
+            <section class="card h-100 shadow-sm">
+                <div class="card-header bg-white fw-bold">📦 Sản phẩm mua nhiều / ít nhất</div>
+                <div class="card-body">
+                    <div th:if="${statistics.mostPurchasedProduct != null}" class="p-3 mb-3 bg-light rounded border-start border-4 border-success">
+                        <div class="small text-success fw-bold">🔥 MUA NHIỀU NHẤT (Bán chạy nhất):</div>
+                        <div class="fs-5 fw-bold" th:text="${statistics.mostPurchasedProduct.name}">Sản phẩm</div>
+                        <div>
+                            <span class="badge bg-success" th:text="|${statistics.mostPurchasedProduct.quantitySold} sản phẩm đã bán|">0</span>
+                            <span class="ms-2 text-muted">Doanh thu: <strong th:text="|${#numbers.formatDecimal(statistics.mostPurchasedProduct.revenue, 0, 'POINT', 0, 'COMMA')} VNĐ|">0 VNĐ</strong></span>
+                        </div>
+                    </div>
+                    <div th:if="${statistics.leastPurchasedProduct != null}" class="p-3 bg-light rounded border-start border-4 border-warning">
+                        <div class="small text-warning fw-bold">💤 MUA ÍT NHẤT (Bán chậm nhất):</div>
+                        <div class="fs-5 fw-bold" th:text="${statistics.leastPurchasedProduct.name}">Sản phẩm</div>
+                        <div>
+                            <span class="badge bg-warning text-dark" th:text="|${statistics.leastPurchasedProduct.quantitySold} sản phẩm đã bán|">0</span>
+                            <span class="ms-2 text-muted">Doanh thu: <strong th:text="|${#numbers.formatDecimal(statistics.leastPurchasedProduct.revenue, 0, 'POINT', 0, 'COMMA')} VNĐ|">0 VNĐ</strong></span>
+                        </div>
+                    </div>
+                    <div th:if="${statistics.productCount == 0}" class="text-muted">Chưa có sản phẩm.</div>
+                </div>
+            </section>
+        </div>
+        <div class="col-lg-6">
+            <section class="card h-100 shadow-sm">
+                <div class="card-header bg-white fw-bold">📅 Ngày bán nhiều / ít nhất</div>
+                <div class="card-body">
+                    <div th:if="${statistics.busiestSalesDay != null}" class="p-3 mb-3 bg-light rounded border-start border-4 border-primary">
+                        <div class="small text-primary fw-bold">🚀 NGÀY BÁN NHIỀU ĐƠN NHẤT:</div>
+                        <div class="fs-5 fw-bold" th:text="${#temporals.format(statistics.busiestSalesDay.date, 'dd/MM/yyyy')}">--</div>
+                        <div>
+                            <span class="badge bg-primary" th:text="|${statistics.busiestSalesDay.orderCount} đơn hàng|">0 đơn</span>
+                            <span class="ms-2 text-muted">Doanh thu ngày: <strong th:text="|${#numbers.formatDecimal(statistics.busiestSalesDay.revenue, 0, 'POINT', 0, 'COMMA')} VNĐ|">0 VNĐ</strong></span>
+                        </div>
+                    </div>
+                    <div th:if="${statistics.quietestSalesDay != null}" class="p-3 bg-light rounded border-start border-4 border-secondary">
+                        <div class="small text-secondary fw-bold">📉 NGÀY BÁN ÍT ĐƠN NHẤT:</div>
+                        <div class="fs-5 fw-bold" th:text="${#temporals.format(statistics.quietestSalesDay.date, 'dd/MM/yyyy')}">--</div>
+                        <div>
+                            <span class="badge bg-secondary" th:text="|${statistics.quietestSalesDay.orderCount} đơn hàng|">0 đơn</span>
+                            <span class="ms-2 text-muted">Doanh thu ngày: <strong th:text="|${#numbers.formatDecimal(statistics.quietestSalesDay.revenue, 0, 'POINT', 0, 'COMMA')} VNĐ|">0 VNĐ</strong></span>
+                        </div>
+                    </div>
+                    <div th:if="${statistics.busiestSalesDay == null}" class="text-muted">Chưa có dữ liệu bán hàng.</div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- AI Trợ lý Thống kê (Vector Database) -->
+    <section class="card shadow-sm">
+        <div class="card-header bg-white fw-bold d-flex align-items-center gap-2">
+            <span>🤖</span>
+            <span>Trợ lý AI Thống kê Bán hàng (RAG + Vector Database)</span>
+        </div>
+        <div class="card-body">
+            <p class="text-muted mb-2">Hỏi đáp trực tiếp với AI về số liệu bán hàng, phân tích xu hướng hoặc so sánh qua các dữ liệu được vector hóa trong SalesAnalyticsVectorStore:</p>
+            
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="fillPrompt('Đơn hàng nào nhiều tiền nhất và ít tiền nhất?')">💰 Đơn nhiều/ít tiền nhất</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="fillPrompt('Sản phẩm nào mua nhiều nhất và ít nhất?')">📦 Sản phẩm mua nhiều/ít nhất</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="fillPrompt('Ngày nào bán được nhiều đơn nhất và ít đơn nhất?')">📅 Ngày bán nhiều/ít nhất</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="fillPrompt('Tổng quan doanh thu và tình hình bán hàng của cửa hàng?')">📈 Tổng quan toàn sàn</button>
+            </div>
+
+            <form th:action="@{/admin/statistics/ask}" method="post">
+                <div class="input-group">
+                    <input class="form-control" type="text" id="statQuestionInput" name="question" maxlength="300"
+                           placeholder="Nhập câu hỏi thống kê hoặc nhấn gợi ý bên trên..." th:value="${question}" required>
+                    <button class="btn btn-primary" type="submit">Phân tích với AI</button>
+                </div>
+            </form>
+
+            <div th:if="${aiAnswer != null}" class="alert alert-info mt-3 mb-0 ai-statistics-answer"
+                 style="white-space: pre-wrap; line-height: 1.6;">
+                <div class="fw-bold mb-1">🤖 Phân tích từ Trợ lý AI:</div>
+                <div th:text="${aiAnswer}"></div>
+            </div>
+            <div th:if="${analysisError != null}" class="alert alert-warning mt-3 mb-0"
+                 th:text="${analysisError}"></div>
+        </div>
+    </section>
+</main>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+<script>
+    function fillPrompt(text) {
+        var input = document.getElementById('statQuestionInput');
+        if (input) {
+            input.value = text;
+            input.focus();
+        }
+    }
+</script>
+</body>
+</html>

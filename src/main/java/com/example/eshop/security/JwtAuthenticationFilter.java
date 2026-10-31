@@ -30,16 +30,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         String token = resolveToken(request);
-        if (token != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+        if (token != null) {
             try {
                 String username = jwtService.extractUsername(token);
-                UserDetails user = userDetailsService.loadUserByUsername(username);
-                if (user.isEnabled()) {
-                    var auth = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
-                    auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContext context = SecurityContextHolder.createEmptyContext();
-                    context.setAuthentication(auth);
-                    SecurityContextHolder.setContext(context);
+                if (username != null) {
+                    UserDetails user = userDetailsService.loadUserByUsername(username);
+                    if (user != null && user.isEnabled()) {
+                        var auth = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+                        auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        SecurityContext context = SecurityContextHolder.createEmptyContext();
+                        context.setAuthentication(auth);
+                        SecurityContextHolder.setContext(context);
+                    }
                 }
             } catch (JwtException | IllegalArgumentException | UsernameNotFoundException ignored) {}
         }

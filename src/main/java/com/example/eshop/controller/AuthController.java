@@ -4,6 +4,7 @@ import com.example.eshop.dto.RegisterForm;
 import com.example.eshop.security.JwtService;
 import com.example.eshop.service.UserService;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -13,6 +14,8 @@ import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -35,6 +38,10 @@ public class AuthController {
         try {
             Authentication auth = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
             UserDetails user = (UserDetails) auth.getPrincipal();
+            SecurityContext context = SecurityContextHolder.createEmptyContext();
+            context.setAuthentication(auth);
+            SecurityContextHolder.setContext(context);
+
             ResponseCookie cookie = ResponseCookie.from(JwtService.COOKIE_NAME, jwtService.generateToken(user))
                     .httpOnly(true)
                     .path("/")
@@ -49,6 +56,22 @@ public class AuthController {
         } catch (AuthenticationException e) {
             return "redirect:/login?error=bad";
         }
+    }
+
+    @GetMapping("/logout")
+    public String logout(HttpServletResponse response, HttpSession session) {
+        ResponseCookie cookie = ResponseCookie.from(JwtService.COOKIE_NAME, "")
+                .httpOnly(true)
+                .path("/")
+                .maxAge(0)
+                .sameSite("Lax")
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+        if (session != null) {
+            session.invalidate();
+        }
+        SecurityContextHolder.clearContext();
+        return "redirect:/login?logout";
     }
 
     @GetMapping("/register")
