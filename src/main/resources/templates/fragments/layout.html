@@ -70,6 +70,24 @@
 <footer th:fragment="footer" class="border-top mt-5 py-3 text-center text-muted small">
     eShop &copy; 2026 - Demo Spring Boot + Thymeleaf + JPA + MariaDB
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Chatbot AI (ẩn với SELLER) -->
+    <div sec:authorize="!hasRole('SELLER')" class="text-start">
+        <button id="chatToggle" class="btn btn-primary rounded-circle shadow chat-toggle" title="Trợ lý AI">💬</button>
+        <div id="chatBox" class="card shadow chat-box d-none">
+            <div class="card-header bg-primary text-white d-flex justify-content-between">
+                <span>🤖 Trợ lý eShop</span>
+                <button type="button" class="btn-close btn-close-white" id="chatClose"></button>
+            </div>
+            <div class="card-body chat-body" id="chatLog">
+                <div class="chat-msg bot">Xin chào! Bạn muốn tìm sản phẩm nào ạ?</div>
+            </div>
+            <form class="card-footer d-flex gap-2" id="chatForm">
+                <input class="form-control" id="chatInput" maxlength="500" placeholder="Nhập câu hỏi..." autocomplete="off">
+                <button class="btn btn-primary" type="submit">Gửi</button>
+            </form>
+        </div>
+        <script th:src="@{/js/chat.js}"></script>
+    </div>
 </footer>
 </body>
 </html>
