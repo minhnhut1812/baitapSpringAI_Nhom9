@@ -31,13 +31,13 @@ public class User {
     private String phone;
     private String address;
 
-    @Enumerated(EnumType.STRING)         // dùng cho giá trị Enum: STRING là lưu thẳng chuỗi. ORDINAL là lưu số thứ tự
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private Role role = Role.ROLE_CUSTOMER;
 
     private boolean enabled = true;
 
-    @CreationTimestamp				// ô giá trị này là tự sinh
+    @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 }

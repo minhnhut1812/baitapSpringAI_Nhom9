@@ -8,6 +8,8 @@ import com.example.eshop.entity.Product;
 import com.example.eshop.repository.OrderRepository;
 import com.example.eshop.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +27,8 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class SalesAnalyticsService {
+    private static final Logger log = LoggerFactory.getLogger(SalesAnalyticsService.class);
+
     private static final String AI_SYSTEM_PROMPT = """
             Bạn là trợ lý phân tích bán hàng nội bộ của eShop. Trả lời bằng tiếng Việt, ngắn gọn và chỉ dựa trên dữ liệu được truy xuất từ Vector Database bên dưới.
             Dùng đúng mã đơn, tên sản phẩm, số lượng, ngày và số tiền được cung cấp; không suy đoán hoặc tự tạo số liệu.
@@ -132,16 +136,25 @@ public class SalesAnalyticsService {
         if (retrievedData.isEmpty()) {
             throw new IllegalStateException("Không tìm thấy dữ liệu thống kê phù hợp trong Vector Database.");
         }
-        String context = String.join("\n", retrievedData);
-        String answer = chatClientBuilder.build().prompt()
-                .system(AI_SYSTEM_PROMPT + "\nDỮ LIỆU THỐNG KÊ TRUY XUẤT TỪ VECTOR DATABASE:\n" + context)
-                .user(question)
-                .call()
-                .content();
-        if (answer == null || answer.isBlank()) {
-            throw new IllegalStateException("AI không trả về nội dung phân tích.");
+        String context = String.join("\n\n", retrievedData);
+        try {
+            String answer = chatClientBuilder.build().prompt()
+                    .system(AI_SYSTEM_PROMPT + "\nDỮ LIỆU THỐNG KÊ TRUY XUẤT TỪ VECTOR DATABASE:\n" + context)
+                    .user(question)
+                    .call()
+                    .content();
+            if (answer == null || answer.isBlank()) {
+                return formatFallbackAnalytics(context);
+            }
+            return answer;
+        } catch (Throwable t) {
+            log.warn("Gemini AI API gặp sự cố khi phân tích thống kê, sử dụng fallback từ VectorStore: {}", t.getMessage());
+            return formatFallbackAnalytics(context);
         }
-        return answer;
+    }
+
+    private String formatFallbackAnalytics(String context) {
+        return "📊 **Dữ liệu phân tích bán hàng từ Vector Database:**\n\n" + context;
     }
 
     private static final class ProductTotals {

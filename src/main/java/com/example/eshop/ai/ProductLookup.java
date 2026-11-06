@@ -10,7 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.*;
 
-/** Tra cứu sản phẩm thật trong DB để làm ngữ cảnh duy nhất cho chatbot. */
+
 @Component
 @RequiredArgsConstructor
 public class ProductLookup {
@@ -36,7 +36,7 @@ public class ProductLookup {
                 .stream().map(this::toInfo).toList();
 
         if (results.isEmpty() && kw.contains(" ")) {
-            // Thử tìm theo từng từ khoá riêng biệt (ví dụ: "điện thoại oppo" -> "oppo")
+
             String[] tokens = kw.split("\\s+");
             for (String token : tokens) {
                 if (token.length() >= 3) {
@@ -51,7 +51,7 @@ public class ProductLookup {
         return results;
     }
 
-    /** Tìm nhanh sản phẩm dựa trên tin nhắn trực tiếp của khách để bỏ qua bước classify giúp AI phản hồi cực nhanh */
+
     @Transactional(readOnly = true)
     public List<ProductInfo> findDirect(String message) {
         if (message == null || message.isBlank()) return List.of();

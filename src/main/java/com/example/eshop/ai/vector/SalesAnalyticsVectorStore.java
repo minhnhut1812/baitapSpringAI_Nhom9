@@ -14,13 +14,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
-/**
- * Cơ sở dữ liệu Vector (Vector Database) lưu trữ các tài liệu thống kê bán hàng của eShop:
- * - Đơn hàng nhiều tiền nhất / ít tiền nhất
- * - Sản phẩm mua nhiều nhất / ít nhất (bán chạy / bán chậm)
- * - Ngày bán nhiều đơn nhất / ít đơn nhất (ngày cao điểm / ngày thấp điểm)
- * - Tổng quan doanh thu và số lượng đơn hàng
- */
+
 @Component
 @RequiredArgsConstructor
 public class SalesAnalyticsVectorStore {
@@ -59,7 +53,7 @@ public class SalesAnalyticsVectorStore {
         if (stats == null) return;
         indexedDocuments.clear();
 
-        // 1. Phân đoạn 1: Đơn hàng nhiều tiền nhất và ít tiền nhất
+
         StringBuilder orderSb = new StringBuilder();
         orderSb.append("Thống kê đơn hàng theo giá trị tiền (nhiều tiền nhất và ít tiền nhất): ");
         if (stats.highestValueOrder() != null) {
@@ -80,7 +74,7 @@ public class SalesAnalyticsVectorStore {
         }
         addDocument("DON_HANG_CAO_THAP_NHAT", orderSb.toString());
 
-        // 2. Phân đoạn 2: Sản phẩm mua nhiều nhất và ít nhất (Bán chạy nhất / ít bán nhất)
+
         StringBuilder prodSb = new StringBuilder();
         prodSb.append("Thống kê sản phẩm bán chạy và mua nhiều nhất, ít nhất: ");
         if (stats.mostPurchasedProduct() != null) {
@@ -99,7 +93,7 @@ public class SalesAnalyticsVectorStore {
         }
         addDocument("SAN_PHAM_MUA_NHIEU_IT_NHAT", prodSb.toString());
 
-        // 3. Phân đoạn 3: Ngày bán nhiều nhất và ngày bán ít nhất
+
         StringBuilder daySb = new StringBuilder();
         daySb.append("Thống kê thời gian và ngày bán hàng (ngày bán nhiều đơn nhất, ngày bán ít đơn nhất): ");
         if (stats.busiestSalesDay() != null) {
@@ -118,7 +112,7 @@ public class SalesAnalyticsVectorStore {
         }
         addDocument("NGAY_BAN_NHIEU_IT_NHAT", daySb.toString());
 
-        // 4. Phân đoạn 4: Tổng quan doanh thu, số đơn, số sản phẩm bán ra
+
         StringBuilder summarySb = new StringBuilder();
         summarySb.append(String.format("Tổng quan toàn bộ hệ thống eShop: Tổng số đơn hàng hợp lệ (không tính đơn hủy) là %d đơn. ", stats.orderCount()));
         summarySb.append(String.format("Tổng doanh thu toàn sàn đạt: %s VNĐ. ", currencyFormatter.format(stats.totalRevenue())));
@@ -126,7 +120,7 @@ public class SalesAnalyticsVectorStore {
         summarySb.append(String.format("Tổng số mặt hàng trong danh mục sản phẩm của cửa hàng là: %d sản phẩm.", stats.productCount()));
         addDocument("TONG_QUAN_DOANH_THU", summarySb.toString());
 
-        // Đồng bộ các phân đoạn thống kê vào Spring AI VectorStore
+
         List<Document> springDocs = new ArrayList<>();
         for (AnalyticsDocument doc : indexedDocuments) {
             Map<String, Object> meta = new HashMap<>();
@@ -157,9 +151,7 @@ public class SalesAnalyticsVectorStore {
         indexedDocuments.add(new AnalyticsDocument(topic, content, embedding));
     }
 
-    /**
-     * Tìm kiếm ngữ nghĩa tương đồng (Semantic Search) qua Spring AI VectorStore
-     */
+
     public List<String> search(String question, int topK) {
         if (indexedDocuments.isEmpty() || question == null || question.isBlank()) {
             return Collections.emptyList();
@@ -167,7 +159,7 @@ public class SalesAnalyticsVectorStore {
 
         Set<String> resultContents = new LinkedHashSet<>();
 
-        // 1. Thử truy xuất ngữ nghĩa qua Spring AI VectorStore chính thức
+
         try {
             List<Document> matched = vectorStore.similaritySearch(
                     SearchRequest.builder()
@@ -186,7 +178,7 @@ public class SalesAnalyticsVectorStore {
             log.warn("Spring AI similaritySearch phân tích thống kê lỗi: {}", e.getMessage());
         }
 
-        // 2. Fallback: tính cosine similarity từ EmbeddingService nội bộ
+
         float[] queryEmbedding = embeddingService.embed(question);
 
         List<AnalyticsDocument> topDocs = indexedDocuments.stream()

@@ -17,26 +17,38 @@ import java.security.Principal;
 public class OrderController {
     private final OrderService orderService;
 
-    @GetMapping("/my")
+    @GetMapping({"", "/", "/my"})
     public String myOrders(Principal principal, Model model) {
+        if (principal == null || principal.getName() == null) {
+            return "redirect:/login";
+        }
         model.addAttribute("orders", orderService.findByUsername(principal.getName()));
         return "order/my-orders";
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id:[0-9]+}")
     public String detail(@PathVariable("id") Long id, Principal principal, Model model) {
+        if (principal == null || principal.getName() == null) {
+            return "redirect:/login";
+        }
         model.addAttribute("order", getOwnedOrder(id, principal));
         return "order/detail";
     }
 
-    @GetMapping("/{id}/payment")
+    @GetMapping("/{id:[0-9]+}/payment")
     public String payment(@PathVariable("id") Long id, Principal principal, Model model) {
+        if (principal == null || principal.getName() == null) {
+            return "redirect:/login";
+        }
         model.addAttribute("order", getOwnedOrder(id, principal));
         return "order/payment";
     }
 
-    @PostMapping("/{id}/pay")
+    @PostMapping("/{id:[0-9]+}/pay")
     public String pay(@PathVariable("id") Long id, Principal principal, RedirectAttributes ra) {
+        if (principal == null || principal.getName() == null) {
+            return "redirect:/login";
+        }
         getOwnedOrder(id, principal);
         orderService.markPaid(id);
         ra.addFlashAttribute("message", "Thanh toán thành công đơn #" + id);

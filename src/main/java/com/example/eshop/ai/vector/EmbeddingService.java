@@ -5,9 +5,7 @@ import org.springframework.stereotype.Service;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
-/**
- * Dịch vụ tạo vector nhúng (Vector Embeddings) cho sản phẩm và câu hỏi tìm kiếm
- */
+
 @Service
 public class EmbeddingService {
 
@@ -23,9 +21,7 @@ public class EmbeddingService {
             "cấu", "pin", "ram", "chip", "camera", "pro", "max", "ultra", "plus"
     );
 
-    /**
-     * Tạo vector embedding 128 chiều được chuẩn hóa (L2 Normalized)
-     */
+
     public float[] embed(String text) {
         float[] vector = new float[VECTOR_DIM];
         if (text == null || text.isBlank()) {
@@ -42,7 +38,7 @@ public class EmbeddingService {
             float weight = computeTokenWeight(token);
             projectToken(token, weight, vector);
 
-            // Tạo thêm n-gram ký tự (tri-grams) để bắt các từ ghép, tên riêng, mã model
+
             if (token.length() >= 4) {
                 for (int i = 0; i <= token.length() - 3; i++) {
                     String ngram = token.substring(i, i + 3);
@@ -51,7 +47,7 @@ public class EmbeddingService {
             }
         }
 
-        // Chuẩn hóa L2 để Cosine Similarity = Dot Product
+
         double sumSq = 0.0;
         for (float v : vector) {
             sumSq += v * v;
@@ -68,8 +64,8 @@ public class EmbeddingService {
     }
 
     private float computeTokenWeight(String token) {
-        // Tăng trọng số cho các từ khóa quan trọng (so sánh, giá, phân loại, thông số)
-        if (token.matches(".*\\d+.*")) return 2.5f; // chứa số (giá, inch, dung lượng, model)
+
+        if (token.matches(".*\\d+.*")) return 2.5f;
         if (IMPORTANT_KEYWORDS.contains(token)) {
             return 2.2f;
         }
@@ -92,9 +88,7 @@ public class EmbeddingService {
         vector[idx2] += sign2 * weight * 0.7f;
     }
 
-    /**
-     * Thuật toán FNV-1a Hash nhanh và phân bố đều
-     */
+
     private int hash(byte[] data, int seed) {
         int h = seed;
         for (byte b : data) {

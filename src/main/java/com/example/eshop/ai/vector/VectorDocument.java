@@ -3,9 +3,7 @@ package com.example.eshop.ai.vector;
 import java.math.BigDecimal;
 import java.util.Map;
 
-/**
- * Biểu diễn một tài liệu sản phẩm trong Vector Database
- */
+
 public record VectorDocument(
         Long id,
         String name,
@@ -18,9 +16,7 @@ public record VectorDocument(
         float[] embedding,
         Map<String, String> specs
 ) {
-    /**
-     * Tính toán Cosine Similarity giữa tài liệu và vector truy vấn
-     */
+
     public double similarityWith(float[] queryEmbedding) {
         if (embedding == null || queryEmbedding == null || embedding.length != queryEmbedding.length) {
             return 0.0;

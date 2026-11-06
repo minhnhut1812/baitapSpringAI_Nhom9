@@ -9,14 +9,12 @@ import java.math.BigDecimal;
 @Getter
 @AllArgsConstructor
 public class CartItem implements Serializable {
-    /**
-	 * 
-	 */
+
 	private static final long serialVersionUID = 1L;
 	private Long productId;
     private String name;
     private String imageUrl;
-    private BigDecimal price;       // tăng độ chính xác của số lớm và số nhiều thập phân
+    private BigDecimal price;
     @Setter private int quantity;
 
     public BigDecimal getSubtotal() {

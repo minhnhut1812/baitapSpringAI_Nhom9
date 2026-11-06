@@ -20,10 +20,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-/**
- * Cơ sở dữ liệu Vector (Vector Database) lưu trữ nhúng ngữ nghĩa của các sản phẩm
- * Hỗ trợ Semantic Search, So sánh đa chiều (giá, chất lượng, kích thước) và Truy vấn Cái nhất (Superlatives).
- */
+
 @Component
 @RequiredArgsConstructor
 public class ProductVectorStore {
@@ -52,7 +49,7 @@ public class ProductVectorStore {
     ) {}
 
     public record PriceFilterResult(
-            String filterType, // "UNDER", "ABOVE", "BETWEEN", "AROUND"
+            String filterType,
             BigDecimal minPrice,
             BigDecimal maxPrice,
             String targetScope,
@@ -85,9 +82,7 @@ public class ProductVectorStore {
         refresh();
     }
 
-    /**
-     * Nạp và tạo vector nhúng (Index) cho toàn bộ sản phẩm trong Database
-     */
+
     @Transactional(readOnly = true)
     public synchronized void refresh() {
         try {
@@ -156,15 +151,13 @@ public class ProductVectorStore {
         }
     }
 
-    /**
-     * Tìm kiếm ngữ nghĩa tương đồng (Semantic Vector Search) qua Spring AI VectorStore
-     */
+
     public List<VectorDocument> similaritySearch(String query, int topK) {
         if (indexedDocuments.isEmpty() || query == null || query.isBlank()) {
             return Collections.emptyList();
         }
 
-        // 1. Ưu tiên truy xuất qua Spring AI VectorStore chính thức
+
         try {
             List<Document> matchedDocs = vectorStore.similaritySearch(
                     SearchRequest.builder()
@@ -194,7 +187,7 @@ public class ProductVectorStore {
             log.warn("Spring AI similaritySearch lỗi, chuyển sang fallback cosine search: {}", e.getMessage());
         }
 
-        // 2. Fallback: tính cosine similarity từ EmbeddingService nội bộ
+
         float[] queryEmbedding = embeddingService.embed(query);
 
         return indexedDocuments.stream()
@@ -206,9 +199,7 @@ public class ProductVectorStore {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Nhận diện và trích xuất các sản phẩm để SO SÁNH (Giá, Kích thước, Chất lượng/Cấu hình)
-     */
+
     public ComparisonResult findForComparison(String query) {
         if (query == null || indexedDocuments.isEmpty()) {
             return new ComparisonResult(Collections.emptyList(), "");
@@ -217,17 +208,17 @@ public class ProductVectorStore {
         String qLower = query.toLowerCase();
         Set<VectorDocument> selected = new LinkedHashSet<>();
 
-        // 1. Quét theo tên sản phẩm có mặt trực tiếp trong câu hỏi
+
         for (VectorDocument doc : indexedDocuments) {
             String nameLower = doc.name().toLowerCase();
-            // Lấy từ khóa chính (vd: "iPhone 15", "Oppo Reno", "Galaxy S24", "Dell XPS")
+
             String cleanName = nameLower.replaceAll("\\(.*?\\)", "").trim();
             if (qLower.contains(cleanName) || isSubMatch(qLower, cleanName)) {
                 selected.add(doc);
             }
         }
 
-        // 2. Nếu chưa đủ ít nhất 2 sản phẩm, dùng Semantic Vector Search để tìm các sản phẩm tương quan nhất
+
         if (selected.size() < 2) {
             List<VectorDocument> topMatches = similaritySearch(query, 4);
             for (VectorDocument doc : topMatches) {
@@ -241,7 +232,7 @@ public class ProductVectorStore {
             return new ComparisonResult(resultList, "");
         }
 
-        // Xây dựng dữ liệu so sánh chi tiết
+
         StringBuilder sb = new StringBuilder();
         sb.append("=== DỮ LIỆU SO SÁNH CHI TIẾT TỪ VECTOR DATABASE ===\n");
         for (int i = 0; i < resultList.size(); i++) {
@@ -257,7 +248,7 @@ public class ProductVectorStore {
             sb.append("\n");
         }
 
-        // Tính chênh lệch giá giữa 2 sản phẩm đầu tiên
+
         if (resultList.size() >= 2) {
             VectorDocument d1 = resultList.get(0);
             VectorDocument d2 = resultList.get(1);
@@ -273,15 +264,13 @@ public class ProductVectorStore {
         return new ComparisonResult(resultList, sb.toString());
     }
 
-    /**
-     * Nhận diện và truy vấn CÁI NHẤT TRONG CÁC PHÂN LOẠI (Rẻ nhất, Đắt nhất, Kích thước to nhất, Cấu hình mạnh nhất)
-     */
+
     public ExtremesResult findExtremes(String query) {
         if (query == null || indexedDocuments.isEmpty()) return null;
 
         String qLower = query.toLowerCase();
 
-        // Xác định loại "Cái nhất"
+
         String extremeType = null;
         if (qLower.contains("rẻ nhất") || qLower.contains("thấp nhất") || qLower.contains("tiết kiệm nhất") || qLower.contains("bình dân nhất")) {
             extremeType = "CHEAPEST";
@@ -297,7 +286,7 @@ public class ProductVectorStore {
 
         if (extremeType == null) return null;
 
-        // Xác định danh mục sản phẩm được hỏi
+
         String matchedCategory = null;
         for (VectorDocument doc : indexedDocuments) {
             String cat = doc.category().toLowerCase();
@@ -310,14 +299,14 @@ public class ProductVectorStore {
         }
 
         final String finalCategory = matchedCategory;
-        // Lọc danh sách sản phẩm thuộc danh mục (nếu có), hoặc toàn bộ cửa hàng
+
         List<VectorDocument> pool = finalCategory != null
                 ? indexedDocuments.stream().filter(d -> d.category().equalsIgnoreCase(finalCategory)).toList()
                 : indexedDocuments;
 
         if (pool.isEmpty()) return null;
 
-        // Sắp xếp theo giá tăng dần
+
         List<VectorDocument> sortedByPrice = pool.stream()
                 .sorted(Comparator.comparing(VectorDocument::price))
                 .toList();
@@ -382,14 +371,12 @@ public class ProductVectorStore {
         return matchCount >= 2;
     }
 
-    /**
-     * Tự động trích xuất và chuẩn hóa thông số (Kích thước màn hình, Cấu hình, Chất lượng hoàn thiện)
-     */
+
     private Map<String, String> extractSpecs(String name, String desc, String category) {
         Map<String, String> specs = new LinkedHashMap<>();
         String text = (name + " " + (desc != null ? desc : "")).toLowerCase();
 
-        // 1. Kích thước màn hình
+
         Pattern screenPattern = Pattern.compile("(\\d+(\\.\\d+)?)\\s*(inch|\"|inh)", Pattern.CASE_INSENSITIVE);
         Matcher mScreen = screenPattern.matcher(text);
         if (mScreen.find()) {
@@ -402,14 +389,14 @@ public class ProductVectorStore {
             specs.put("Kích thước màn hình", "14 - 15.6 inch");
         }
 
-        // 2. Cấu hình phần cứng (RAM & Bộ nhớ)
+
         Pattern romPattern = Pattern.compile("(\\d{2,4})\\s*(gb|tb)", Pattern.CASE_INSENSITIVE);
         Matcher mRom = romPattern.matcher(text);
         if (mRom.find()) {
             specs.put("Dung lượng bộ nhớ", mRom.group(1) + mRom.group(2).toUpperCase());
         }
 
-        // 3. Vi xử lý & Hiệu năng
+
         if (text.contains("a17") || text.contains("a16") || text.contains("a15")) {
             specs.put("Cấu hình chip", "Apple Bionic/A-Series hiệu năng hàng đầu");
         } else if (text.contains("snapdragon 8") || text.contains("snapdragon")) {
@@ -420,7 +407,7 @@ public class ProductVectorStore {
             specs.put("Cấu hình CPU", "Vi xử lý đa nhân tốc độ cao cho làm việc chuyên nghiệp");
         }
 
-        // 4. Chất lượng hoàn thiện & Vật liệu
+
         if (text.contains("titan") || text.contains("titanium")) {
             specs.put("Chất lượng hoàn thiện", "Khung viền Titan siêu bền, nhẹ, cao cấp");
         } else if (text.contains("nhôm") || text.contains("kim loại")) {
@@ -434,9 +421,7 @@ public class ProductVectorStore {
         return specs;
     }
 
-    /**
-     * Nhận diện và lọc sản phẩm theo mức giá (Dưới giá, Trên giá, Khoảng giá, Tầm giá)
-     */
+
     public PriceFilterResult findByPriceQuery(String query) {
         if (query == null || indexedDocuments.isEmpty()) return null;
         String q = query.toLowerCase().trim();
@@ -445,7 +430,7 @@ public class ProductVectorStore {
         BigDecimal minPrice = null;
         BigDecimal maxPrice = null;
 
-        // 1. Kiểm tra Khoảng giá (Range): từ X đến/tới Y hoặc X - Y triệu
+
         Pattern rangePat = Pattern.compile("(?:từ\\s*)?(\\d+(?:[.,]\\d+)?\\s*(?:triệu|trieu|tr|k|m|nghìn|ngàn)?)\\s*(?:đến|tới|-)\\s*(\\d+(?:[.,]\\d+)?\\s*(?:triệu|trieu|tr|k|m|nghìn|ngàn))");
         Matcher mRange = rangePat.matcher(q);
         if (mRange.find()) {
@@ -463,7 +448,7 @@ public class ProductVectorStore {
             }
         }
 
-        // 2. Kiểm tra Dưới giá / Rẻ hơn / Tối đa / Ngân sách
+
         if (filterType == null) {
             Pattern underPat = Pattern.compile("(?:dưới|nhỏ hơn|bé hơn|thấp hơn|rẻ hơn|tối đa|không quá|ngân sách|tài chính(?:\\s*dưới)?|<=|<)\\s*(\\d+(?:[.,]\\d+)?(?:\\s*(?:triệu|trieu|tr|k|m|nghìn|ngàn)|tr\\d+)?|\\d{1,3}(?:[.,]\\d{3})+|\\d{6,})");
             Matcher mUnder = underPat.matcher(q);
@@ -477,7 +462,7 @@ public class ProductVectorStore {
             }
         }
 
-        // 3. Kiểm tra Trên giá / Đắt hơn / Tối thiểu / Từ ... trở lên
+
         if (filterType == null) {
             Pattern abovePat = Pattern.compile("(?:trên|lớn hơn|cao hơn|đắt hơn|nhiều hơn|tối thiểu|từ|>=|>)\\s*(\\d+(?:[.,]\\d+)?(?:\\s*(?:triệu|trieu|tr|k|m|nghìn|ngàn)|tr\\d+)?|\\d{1,3}(?:[.,]\\d{3})+|\\d{6,})(?:\\s*(?:trở lên|trở đi))?");
             Matcher mAbove = abovePat.matcher(q);
@@ -486,12 +471,12 @@ public class ProductVectorStore {
                 if (p != null) {
                     filterType = "ABOVE";
                     minPrice = p;
-                    maxPrice = BigDecimal.valueOf(1_000_000_000L); // 1 tỷ
+                    maxPrice = BigDecimal.valueOf(1_000_000_000L);
                 }
             }
         }
 
-        // 4. Kiểm tra Khoảng / Tầm giá (Around ± 15%)
+
         if (filterType == null) {
             Pattern aroundPat = Pattern.compile("(?:khoảng|tầm(?:\\s*giá)?|xung quanh)\\s*(\\d+(?:[.,]\\d+)?(?:\\s*(?:triệu|trieu|tr|k|m|nghìn|ngàn)|tr\\d+)?|\\d{1,3}(?:[.,]\\d{3})+|\\d{6,})");
             Matcher mAround = aroundPat.matcher(q);
@@ -627,9 +612,7 @@ public class ProductVectorStore {
         return BigDecimal.valueOf((long) val);
     }
 
-    /**
-     * Nhận diện và kiểm tra tình trạng tồn kho của sản phẩm
-     */
+
     public StockCheckResult checkStock(String query) {
         if (query == null || indexedDocuments.isEmpty()) return null;
         String q = query.toLowerCase().trim();
@@ -677,9 +660,7 @@ public class ProductVectorStore {
         );
     }
 
-    /**
-     * Nhận diện và tư vấn sản phẩm theo Nhu cầu & Mục đích sử dụng (Gaming, Học tập/Văn phòng, Chụp ảnh, Pin trâu, v.v.)
-     */
+
     public UsageRecommendationResult findForUsage(String query) {
         if (query == null || indexedDocuments.isEmpty()) return null;
         String q = query.toLowerCase().trim();

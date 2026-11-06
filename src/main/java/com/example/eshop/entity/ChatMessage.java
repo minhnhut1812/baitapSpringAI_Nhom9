@@ -22,7 +22,7 @@ public class ChatMessage {
     private ChatSession session;
 
     @Column(nullable = false, length = 20)
-    private String role; // "user" hoặc "bot"
+    private String role;
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;

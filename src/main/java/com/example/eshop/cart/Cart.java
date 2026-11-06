@@ -10,11 +10,12 @@ import java.util.*;
 @Component
 @SessionScope
 public class Cart implements Serializable {
-    /**
-	 * 
-	 */
-	private static final long serialVersionUID = 1L;
-	private final Map<Long, CartItem> items = new LinkedHashMap<>();
+    private static final long serialVersionUID = 1L;
+    private final Map<Long, CartItem> items = new LinkedHashMap<>();
+
+    private String voucherCode;
+    private int discountPercent = 0;
+    private BigDecimal discountFlat = BigDecimal.ZERO;
 
     public void add(Product p, int quantity) {
         CartItem item = items.get(p.getId());
@@ -31,7 +32,10 @@ public class Cart implements Serializable {
     }
 
     public void remove(Long productId) { items.remove(productId); }
-    public void clear() { items.clear(); }
+    public void clear() {
+        items.clear();
+        removeVoucher();
+    }
     public Collection<CartItem> getItems() { return items.values(); }
     public boolean isEmpty() { return items.isEmpty(); }
     public int getQuantityOf(Long productId) {
@@ -41,9 +45,49 @@ public class Cart implements Serializable {
     public int getTotalQuantity() {
         return items.values().stream().mapToInt(CartItem::getQuantity).sum();
     }
-    public BigDecimal getTotalAmount() {
+
+    public BigDecimal getSubtotal() {
         return items.values().stream()
                 .map(CartItem::getSubtotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public void applyVoucher(String code, int percent, BigDecimal flat) {
+        this.voucherCode = code;
+        this.discountPercent = Math.max(0, percent);
+        this.discountFlat = flat != null ? flat : BigDecimal.ZERO;
+    }
+
+    public void removeVoucher() {
+        this.voucherCode = null;
+        this.discountPercent = 0;
+        this.discountFlat = BigDecimal.ZERO;
+    }
+
+    public String getVoucherCode() { return voucherCode; }
+    public int getDiscountPercent() { return discountPercent; }
+    public BigDecimal getDiscountFlat() { return discountFlat; }
+
+    public BigDecimal getDiscountAmount() {
+        BigDecimal subtotal = getSubtotal();
+        if (subtotal.compareTo(BigDecimal.ZERO) <= 0) return BigDecimal.ZERO;
+        BigDecimal discount = BigDecimal.ZERO;
+        if (discountPercent > 0) {
+            discount = discount.add(subtotal.multiply(BigDecimal.valueOf(discountPercent)).divide(BigDecimal.valueOf(100)));
+        }
+        if (discountFlat != null && discountFlat.compareTo(BigDecimal.ZERO) > 0) {
+            discount = discount.add(discountFlat);
+        }
+        if (discount.compareTo(subtotal) > 0) {
+            return subtotal;
+        }
+        return discount;
+    }
+
+    public BigDecimal getTotalAmount() {
+        BigDecimal subtotal = getSubtotal();
+        BigDecimal discount = getDiscountAmount();
+        BigDecimal total = subtotal.subtract(discount);
+        return total.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : total;
     }
 }

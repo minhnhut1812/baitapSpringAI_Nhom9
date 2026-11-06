@@ -13,7 +13,7 @@ import java.math.BigDecimal;
 @RequiredArgsConstructor
 public class ProductApiController {
  private final ProductService productService;
- /** DTO trả ra JSON – không trả entity trực tiếp (tránh lỗi proxy LAZY, vòng lặp JSON). */
+
  public record ProductDto(Long id, String name, String description, BigDecimal price,
  Integer quantity, String imageUrl, Long categoryId, String
 categoryName) {
@@ -27,7 +27,7 @@ p.getCategory().getName());
  @NotNull @DecimalMin("0") BigDecimal price,
 @NotNull @Min(0) Integer quantity,
 String imageUrl, @NotNull Long categoryId) {}
- @GetMapping // GUEST, CUSTOMER, SELLER
+ @GetMapping
  public Page<ProductDto> list(@RequestParam(required = false) String keyword,
  @RequestParam(required = false) Long categoryId,
 @RequestParam(defaultValue = "0") int page,
@@ -38,20 +38,20 @@ String imageUrl, @NotNull Long categoryId) {}
  public ProductDto get(@PathVariable Long id) {
  return ProductDto.from(productService.findById(id));
  }
- @PostMapping // SELLER
+ @PostMapping
  @ResponseStatus(HttpStatus.CREATED)
  public ProductDto create(@Valid @RequestBody ProductRequest req) {
  Product p = new Product();
  apply(req, p);
  return ProductDto.from(productService.save(p, req.categoryId()));
  }
- @PutMapping("/{id}") // SELLER
+ @PutMapping("/{id}")
  public ProductDto update(@PathVariable Long id, @Valid @RequestBody ProductRequest req) {
  Product p = productService.findById(id);
  apply(req, p);
  return ProductDto.from(productService.save(p, req.categoryId()));
  }
- @DeleteMapping("/{id}") // SELLER
+ @DeleteMapping("/{id}")
  @ResponseStatus(HttpStatus.NO_CONTENT)
  public void delete(@PathVariable Long id) {
  productService.delete(id);

@@ -55,6 +55,17 @@ public class OrderService {
             order.addDetail(d);
             total = total.add(d.getSubtotal());
         }
+
+        if (cart.getDiscountAmount().compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal discount = cart.getDiscountAmount();
+            total = total.subtract(discount);
+            if (total.compareTo(BigDecimal.ZERO) < 0) total = BigDecimal.ZERO;
+            if (cart.getVoucherCode() != null) {
+                order.setNote((order.getNote() != null && !order.getNote().isBlank() ? order.getNote() + " | " : "")
+                        + "Voucher: " + cart.getVoucherCode() + " (-" + discount + " đ)");
+            }
+        }
+
         order.setTotalAmount(total);
         return orderRepository.save(order);
     }
@@ -74,6 +85,31 @@ public class OrderService {
     public void markPaid(Long id) {
         Order o = findById(id);
         if (o.getStatus() == OrderStatus.NEW) o.setStatus(OrderStatus.PAID);
+    }
+
+    @Transactional
+    public Order cancelOrderCustomer(Long id, String username, String reason) {
+        Order o = findById(id);
+        if (username != null && o.getUser() != null && !username.equalsIgnoreCase(o.getUser().getUsername())) {
+            throw new IllegalStateException("Bạn không có quyền hủy đơn hàng #" + id + " vì đơn hàng này thuộc về tài khoản khác.");
+        }
+        if (o.getStatus() == OrderStatus.CANCELLED) {
+            throw new IllegalStateException("Đơn hàng #" + id + " đã được hủy trước đó rồi.");
+        }
+        if (o.getStatus() == OrderStatus.SHIPPING || o.getStatus() == OrderStatus.DONE) {
+            throw new IllegalStateException("Đơn hàng #" + id + " đang được vận chuyển hoặc đã giao thành công, không thể hủy.");
+        }
+
+        o.getDetails().forEach(d -> {
+            if (d.getProduct() != null) {
+                d.getProduct().setQuantity(d.getProduct().getQuantity() + d.getQuantity());
+            }
+        });
+        o.setStatus(OrderStatus.CANCELLED);
+        if (reason != null && !reason.isBlank()) {
+            o.setNote((o.getNote() != null && !o.getNote().isBlank() ? o.getNote() + " | " : "") + "Lý do hủy: " + reason);
+        }
+        return orderRepository.save(o);
     }
 
     @PreAuthorize("hasRole('SELLER')")

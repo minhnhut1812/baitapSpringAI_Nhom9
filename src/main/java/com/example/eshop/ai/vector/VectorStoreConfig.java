@@ -9,10 +9,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
-/**
- * Cấu hình Vector Database chuẩn Spring AI (SimpleVectorStore).
- * Kết nối với EmbeddingModel để quản lý Document và Similarity Search.
- */
+
 @Configuration
 public class VectorStoreConfig {
     private static final Logger log = LoggerFactory.getLogger(VectorStoreConfig.class);

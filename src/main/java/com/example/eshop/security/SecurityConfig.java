@@ -41,7 +41,7 @@ public class SecurityConfig {
         return new JwtAuthenticationFilter(jwtService, userDetailsService);
     }
 
-    // CHAIN 1: REST API (/api/**)
+
     @Bean
     @Order(1)
     public SecurityFilterChain apiFilterChain(HttpSecurity http) throws Exception {
@@ -61,7 +61,7 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // CHAIN 2: WEB (Thymeleaf)
+
     @Bean
     @Order(2)
     public SecurityFilterChain webFilterChain(HttpSecurity http) throws Exception {
@@ -73,7 +73,7 @@ public class SecurityConfig {
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/favicon.ico", "/error", "/403").permitAll()
                 .requestMatchers("/", "/products", "/products/**", "/login", "/logout").permitAll()
                 .requestMatchers("/register").hasRole("GUEST")
-                .requestMatchers("/cart/**", "/checkout/**", "/orders/**").hasRole("CUSTOMER")
+                .requestMatchers("/cart", "/cart/**", "/checkout", "/checkout/**", "/orders", "/orders/**").hasRole("CUSTOMER")
                 .requestMatchers("/admin/**").hasRole("SELLER")
                 .anyRequest().authenticated())
             .exceptionHandling(e -> e

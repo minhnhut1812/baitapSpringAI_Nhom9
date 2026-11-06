@@ -1,5 +1,6 @@
 package com.example.eshop.ai;
 
+import com.example.eshop.cart.Cart;
 import com.example.eshop.entity.ChatSession;
 import com.example.eshop.service.ChatHistoryService;
 import jakarta.validation.Valid;
@@ -14,6 +15,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -25,6 +27,7 @@ public class ChatController {
 
     private final ShopAssistant assistant;
     private final ChatHistoryService chatHistoryService;
+    private final Cart cart;
 
     public record MessageItem(String role, String content) {}
 
@@ -83,33 +86,35 @@ public class ChatController {
     }
 
     @PostMapping
-    public Map<String, String> chat(@Valid @RequestBody ChatRequest req, Principal principal) {
+    public Map<String, Object> chat(@Valid @RequestBody ChatRequest req, Principal principal) {
         String username = getUsername(principal);
+        Map<String, Object> resp = new HashMap<>();
         try {
             if (username != null) {
-                // Người dùng đã đăng nhập: Lưu lịch sử trực tiếp vào MariaDB
                 ChatSession session = chatHistoryService.getOrCreateSession(username, req.sessionId());
                 chatHistoryService.saveMessage(session, "user", req.message());
 
-                // Lấy các tin nhắn trước đó để AI có ngữ cảnh trò chuyện
                 List<MessageItem> history = chatHistoryService.getRecentHistory(session, 8);
                 String reply = assistant.ask(req.message(), history, username);
 
                 chatHistoryService.saveMessage(session, "bot", reply);
 
-                return Map.of(
-                        "reply", reply,
-                        "sessionId", session.getId(),
-                        "title", session.getTitle()
-                );
+                resp.put("reply", reply);
+                resp.put("sessionId", session.getId());
+                resp.put("title", session.getTitle());
+                resp.put("cartCount", cart.getTotalQuantity());
+                return resp;
             } else {
-                // Khách vãng lai: Sử dụng lịch sử gửi từ client
                 String reply = assistant.ask(req.message(), req.history(), null);
-                return Map.of("reply", reply);
+                resp.put("reply", reply);
+                resp.put("cartCount", cart.getTotalQuantity());
+                return resp;
             }
-        } catch (Exception e) {
-            log.warn("Chat AI lỗi: ", e);
-            return Map.of("reply", "Xin lỗi, trợ lý AI đang không khả dụng. Vui lòng thử lại sau.");
+        } catch (Throwable t) {
+            log.warn("Chat AI lỗi: ", t);
+            resp.put("reply", "Xin lỗi, trợ lý AI đang không khả dụng. Vui lòng thử lại sau.");
+            resp.put("cartCount", cart.getTotalQuantity());
+            return resp;
         }
     }
 

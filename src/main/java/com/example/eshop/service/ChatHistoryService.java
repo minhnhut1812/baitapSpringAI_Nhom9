@@ -123,7 +123,7 @@ public class ChatHistoryService {
         chatMessageRepository.save(message);
 
         session.setUpdatedAt(LocalDateTime.now());
-        // Tự động cập nhật tiêu đề theo tin nhắn đầu tiên của user
+
         if ("user".equalsIgnoreCase(role) && ("Cuộc trò chuyện mới".equals(session.getTitle()) || session.getTitle().isBlank())) {
             String clean = content.trim();
             session.setTitle(clean.length() > 32 ? clean.substring(0, 32) + "..." : clean);

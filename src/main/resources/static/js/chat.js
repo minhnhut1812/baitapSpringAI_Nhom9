@@ -18,11 +18,11 @@
     const STORAGE_SESSIONS_KEY = 'eshop_chat_sessions_' + currentUser;
     const STORAGE_ACTIVE_KEY = 'eshop_active_session_' + currentUser;
     const OPEN_KEY = 'eshop_chat_open';
-    const DEFAULT_GREETING = '👋 **Xin chào! Em là trợ lý mua sắm thông minh của eShop.**\n\nEm có thể hỗ trợ bạn:\n- 📋 **Đơn hàng & Thống kê:** *"Đơn hàng của tôi"*, *"Tôi đã mua bao nhiêu đơn, bao nhiêu tiền, đơn nào cao nhất?"*, *"Đơn #5 của mình"*\n- 💰 **Lọc theo giá:** *"Tìm sản phẩm dưới 10 triệu"*, *"Điện thoại từ 5 đến 15tr"*, *"Laptop trên 20tr"*\n- ⚖️ **So sánh:** *"So sánh Oppo Reno12 và iPhone 15"*\n- 🏆 **Hỏi cái nhất:** *"Sản phẩm rẻ nhất phân loại điện thoại"*, *"Máy nào màn hình to nhất?"*\n- 🎯 **Tư vấn theo nhu cầu:** *"Laptop cho sinh viên"*, *"Điện thoại chơi game pin trâu"*\n- 📦 **Tồn kho & Dịch vụ:** *"iPhone 15 còn hàng không?"*, *"Chính sách bảo hành và giao hàng"*';
+    const DEFAULT_GREETING = '👋 **Xin chào! Em là AI Shopping Agent của eShop.**\n\nEm có thể trực tiếp thực hiện hành động mua sắm và tra cứu cho bạn:\n- 🛒 **Tự thêm vào giỏ hàng:** *\"Thêm 1 cái iPhone 15 vào giỏ\"*, *\"Cho 2 tai nghe Sony vào giỏ hàng giúp mình\"*\n- 🛍️ **Xem giỏ hàng & Tính tiền:** *\"Xem giỏ hàng của tôi\"*, *\"Giỏ hàng hiện tại có gì?\"*\n- 🎁 **Áp mã giảm giá voucher:** *\"Áp mã GIAM10\"*, *\"Dùng voucher CHAOBANMOI\"*, *\"Mã FREESHIP\"*\n- ❌ **Hủy đơn hàng & hoàn kho:** *\"Hủy đơn hàng #5 vì mình đổi ý\"*\n- 📋 **Đơn hàng & Thống kê:** *\"Đơn hàng của tôi\"*, *\"Tôi đã mua bao nhiêu đơn, bao nhiêu tiền?\"*\n- 💰 **Lọc theo giá:** *\"Tìm sản phẩm dưới 10 triệu\"*, *\"Điện thoại từ 5 đến 15tr\"*\n- ⚖️ **So sánh đa chiều:** *\"So sánh Oppo Reno12 và iPhone 15\"*\n- 🏆 **Hỏi cái nhất:** *\"Sản phẩm rẻ nhất phân loại điện thoại\"*, *\"Máy nào cấu hình mạnh nhất?\"*';
 
     let currentSessionId = null;
 
-    // Quản lý trạng thái đóng/mở khung chat
+
     const setOpen = (open) => {
         if (open) {
             box.classList.remove('d-none');
@@ -118,13 +118,13 @@
 
     function formatInline(str) {
         if (!str) return '';
-        // Bold: **text**
+
         str = str.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-        // Inline code: `code`
+
         str = str.replace(/`([^`]+)`/g, '<code class="bg-light px-1 rounded">$1</code>');
-        // Italic: *text*
+
         str = str.replace(/(^|[^\*])\*([^\*]+)\*([^\*]|$)/g, '$1<em>$2</em>$3');
-        // Markdown Links: [text](url) - hỗ trợ tất cả các đường dẫn (/orders/1, /products/2, /cart, /login...) và URL ngoài
+
         str = str.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function (match, text, url) {
             const cleanUrl = url.trim();
             const isExternal = cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://');
@@ -136,13 +136,13 @@
 
     function parseMarkdown(text) {
         if (!text) return '';
-        // Escape HTML
+
         let escaped = text
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;');
 
-        // Xử lý Bảng Markdown (| Cột 1 | Cột 2 |)
+
         const lines = escaped.split('\n');
         let inTable = false;
         let tableHtml = '';
@@ -158,7 +158,7 @@
                         tableHtml = '<table class="table table-sm table-bordered"><thead><tr>' +
                             cells.map(c => `<th>${formatInline(c)}</th>`).join('') +
                             '</tr></thead><tbody>';
-                        i++; // bỏ qua dòng gạch ngang |---|---|
+                        i++;
                         continue;
                     }
                 } else {
@@ -192,9 +192,9 @@
         return d;
     }
 
-    // ==========================================
-    // LOGIC CHO NGƯỜI DÙNG ĐÃ ĐĂNG NHẬP (LƯU DB)
-    // ==========================================
+
+
+
     async function loadSessionsFromDB() {
         try {
             const res = await fetch('/api/chat/sessions');
@@ -251,9 +251,9 @@
         }
     }
 
-    // ==========================================
-    // LOGIC CHO KHÁCH VÃNG LAI (LOCALSTORAGE)
-    // ==========================================
+
+
+
     function getSessionsFromLocal() {
         try {
             const raw = localStorage.getItem(STORAGE_SESSIONS_KEY);
@@ -283,9 +283,9 @@
         return sess;
     }
 
-    // ==========================================
-    // ĐIỀU HƯỚNG VÀ HIỂN THỊ CHUNG
-    // ==========================================
+
+
+
     async function selectSession(sessionId) {
         if (!sessionId) return;
         currentSessionId = sessionId;
@@ -361,7 +361,7 @@
             info.appendChild(title);
             info.appendChild(meta);
 
-            // Bấm vào bất kỳ đâu trên hàng để chọn và tải phiên trò chuyện
+
             item.onclick = () => selectSession(sess.id);
 
             const delBtn = document.createElement('span');
@@ -369,7 +369,7 @@
             delBtn.innerHTML = '🗑️';
             delBtn.title = 'Xoá cuộc trò chuyện này';
             delBtn.onclick = async (e) => {
-                e.stopPropagation(); // Ngăn chọn phiên khi bấm xoá
+                e.stopPropagation();
                 if (isLoggedIn) {
                     await deleteSessionInDB(sess.id);
                 } else {
@@ -407,7 +407,7 @@
         }
     }
 
-    // Nút "➕ Mới"
+
     if (newBtn) {
         newBtn.onclick = async () => {
             await startNewSession();
@@ -415,7 +415,7 @@
         };
     }
 
-    // Nút "📜 Lịch sử"
+
     if (historyBtn) {
         historyBtn.onclick = () => {
             if (historyPanel.classList.contains('d-none')) {
@@ -426,7 +426,7 @@
         };
     }
 
-    // Nút "Xóa hết" trong lịch sử
+
     if (clearAllBtn) {
         clearAllBtn.onclick = async () => {
             if (confirm('Bạn có chắc muốn xoá toàn bộ lịch sử trò chuyện của tài khoản này không?')) {
@@ -442,7 +442,7 @@
         };
     }
 
-    // Khởi tạo khi vào trang
+
     async function init() {
         if (isLoggedIn) {
             const sessions = await loadSessionsFromDB();
@@ -470,7 +470,7 @@
 
     init();
 
-    // Gửi tin nhắn
+
     form.onsubmit = async (e) => {
         e.preventDefault();
         const msg = input.value.trim();
@@ -512,6 +512,10 @@
             wait.remove();
             const reply = data.reply || 'Xin lỗi, có lỗi xảy ra.';
             renderMessage(reply, 'bot');
+
+            if (data.cartCount !== undefined && data.cartCount !== null) {
+                document.querySelectorAll('a[href*="/cart"] .badge, .badge.bg-warning').forEach(b => b.textContent = data.cartCount);
+            }
 
             if (isLoggedIn && data.sessionId) {
                 currentSessionId = data.sessionId;

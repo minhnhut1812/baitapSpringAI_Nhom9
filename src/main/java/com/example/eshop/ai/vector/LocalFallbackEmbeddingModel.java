@@ -9,10 +9,7 @@ import org.springframework.ai.embedding.EmbeddingResponse;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Fallback EmbeddingModel sử dụng thuật toán Vector ngữ nghĩa từ khóa nội bộ (EmbeddingService).
- * Hoạt động tự động khi chưa có GEMINI_API_KEY hoặc khi offline để đảm bảo ứng dụng luôn chạy ổn định.
- */
+
 public class LocalFallbackEmbeddingModel extends AbstractEmbeddingModel {
     private final EmbeddingService embeddingService;
 

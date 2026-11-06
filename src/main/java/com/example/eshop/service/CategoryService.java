@@ -23,7 +23,7 @@ public class CategoryService {
                 .orElseThrow(() -> new NotFoundException("Không tìm thấy danh mục id = " + id));
     }
 
-    @PreAuthorize("hasRole('SELLER')")          // phân quyền
+    @PreAuthorize("hasRole('SELLER')")
     public Category save(Category category) { return categoryRepository.save(category); }
 
     @PreAuthorize("hasRole('SELLER')")

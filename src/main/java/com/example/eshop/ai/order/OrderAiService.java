@@ -16,9 +16,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * Dịch vụ tra cứu đơn hàng & thống kê chi tiêu cho AI Trợ lý
- */
+
 @Service
 @RequiredArgsConstructor
 public class OrderAiService {
@@ -60,9 +58,7 @@ public class OrderAiService {
             Map<String, Integer> statusCounts
     ) {}
 
-    /**
-     * Nhận diện câu hỏi có liên quan đến Đơn hàng hoặc Thống kê mua sắm của khách
-     */
+
     public boolean isOrderQuery(String query) {
         if (query == null || query.isBlank()) return false;
         String q = query.toLowerCase();
@@ -76,9 +72,7 @@ public class OrderAiService {
                 || q.contains("đã chi bao nhiêu") || q.contains("mua những gì");
     }
 
-    /**
-     * Trích xuất mã số đơn hàng nếu người dùng hỏi về một đơn cụ thể (vd: "đơn #5", "đơn số 12")
-     */
+
     public Long extractOrderId(String query) {
         if (query == null) return null;
         String q = query.toLowerCase();
@@ -92,9 +86,7 @@ public class OrderAiService {
         return null;
     }
 
-    /**
-     * Lấy toàn bộ thống kê và danh sách đơn hàng của khách hàng hiện tại
-     */
+
     @Transactional(readOnly = true)
     public CustomerOrderStats getCustomerStats(String username) {
         if (username == null || username.isBlank()) return null;
@@ -127,7 +119,7 @@ public class OrderAiService {
 
         BigDecimal averageSpent = totalSpent.divide(BigDecimal.valueOf(totalOrders), 0, RoundingMode.HALF_UP);
         OrderDto highestDto = mapToDto(highestOrder);
-        OrderDto latestDto = dtoList.get(0); // Vì danh sách đã ORDER BY orderDate DESC
+        OrderDto latestDto = dtoList.get(0);
 
         return new CustomerOrderStats(
                 username,
@@ -141,9 +133,7 @@ public class OrderAiService {
         );
     }
 
-    /**
-     * Tra cứu một đơn hàng cụ thể theo ID thuộc quyền sở hữu của username
-     */
+
     @Transactional(readOnly = true)
     public Optional<OrderDto> getSpecificOrder(String username, Long orderId) {
         if (username == null || orderId == null) return Optional.empty();
